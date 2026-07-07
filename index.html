@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <meta name="theme-color" content="#0d0f14"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <title>BTC Algo Monitor</title>
+  <link rel="manifest" href="manifest.json"/>
+  <style>
+    :root {
+      --bg: #0d0f14;
+      --card: #161922;
+      --border: #1f2433;
+      --green: #1D9E75;
+      --red: #D85A30;
+      --cyan: #00d4ff;
+      --amber: #f9a825;
+      --purple: #7F77DD;
+      --text: #e8eaf0;
+      --muted: #6b7280;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+      padding-bottom: 80px;
+    }
+
+    /* Header */
+    .header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header h1 { font-size: 18px; font-weight: 700; }
+    .header h1 span { color: var(--cyan); }
+    .btc-price {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--cyan);
+      font-family: monospace;
+    }
+    .last-update { font-size: 11px; color: var(--muted); margin-top: 2px; text-align: right; }
+
+    /* Nav */
+    .nav {
+      display: flex;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+    }
+    .nav button {
+      flex: 1;
+      padding: 12px 8px;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .nav button.active {
+      color: var(--cyan);
+      border-bottom-color: var(--cyan);
+    }
+
+    /* Pages */
+    .page { display: none; padding: 16px; }
+    .page.active { display: block; }
+
+    /* Cards */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .card-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+
+    /* Metrics grid */
+    .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .metric { background: var(--bg); border-radius: 8px; padding: 12px; }
+    .metric-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .metric-value { font-size: 18px; font-weight: 700; font-family: monospace; }
+    .metric-value.green { color: var(--green); }
+    .metric-value.red { color: var(--red); }
+    .metric-value.cyan { color: var(--cyan); }
+    .metric-value.amber { color: var(--amber); }
+
+    /* Strategy toggle */
+    .strategy-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .strategy-row:last-child { border-bottom: none; }
+    .strategy-info h3 { font-size: 15px; font-weight: 700; }
+    .strategy-info p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* Toggle switch */
+    .toggle {
+      position: relative;
+      width: 52px;
+      height: 28px;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: var(--border);
+      border-radius: 28px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .toggle-slider:before {
+      content: '';
+      position: absolute;
+      width: 20px; height: 20px;
+      left: 4px; top: 4px;
+      background: var(--muted);
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+    .toggle input:checked + .toggle-slider { background: var(--green); }
+    .toggle input:checked + .toggle-slider:before {
+      transform: translateX(24px);
+      background: white;
+    }
+
+    /* Position card */
+    .position-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .position-badge.open { background: rgba(29,158,117,0.15); color: var(--green); }
+    .position-badge.closed { background: rgba(107,114,128,0.15); color: var(--muted); }
+    .position-badge.dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .kv-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .kv-row:last-child { border-bottom: none; }
+    .kv-key { color: var(--muted); }
+    .kv-val { font-weight: 600; font-family: monospace; }
+    .kv-val.green { color: var(--green); }
+    .kv-val.red { color: var(--red); }
+    .kv-val.cyan { color: var(--cyan); }
+    .kv-val.amber { color: var(--amber); }
+
+    /* Events log */
+    .events-log {
+      background: var(--bg);
+      border-radius: 8px;
+      padding: 10px;
+      max-height: 200px;
+      overflow-y: auto;
+      font-size: 11px;
+      font-family: monospace;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    /* Trade table */
+    .trade-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .trade-table th {
+      text-align: left;
+      padding: 8px 6px;
+      color: var(--muted);
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+    .trade-table td {
+      padding: 10px 6px;
+      border-bottom: 1px solid var(--border);
+      font-family: monospace;
+    }
+    .trade-table tr:last-child td { border-bottom: none; }
+    .win { color: var(--green); }
+    .loss { color: var(--red); }
+
+    /* Settings */
+    .setting-row {
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .setting-row:last-child { border-bottom: none; }
+    .setting-label { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+    .setting-sub { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+    .setting-input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--text);
+      font-size: 14px;
+      font-family: monospace;
+    }
+    .setting-input:focus {
+      outline: none;
+      border-color: var(--cyan);
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      width: 100%;
+      margin-top: 8px;
+    }
+    .btn:active { opacity: 0.7; }
+    .btn-primary { background: var(--cyan); color: #0d0f14; }
+    .btn-danger { background: rgba(216,90,48,0.15); color: var(--red); border: 1px solid var(--red); }
+    .btn-success { background: rgba(29,158,117,0.15); color: var(--green); border: 1px solid var(--green); }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 90px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 20px;
+      font-size: 13px;
+      opacity: 0;
+      transition: all 0.3s;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 999;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* Bottom nav */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      display: flex;
+      padding: 8px 0;
+      z-index: 100;
+    }
+    .bottom-nav button {
+      flex: 1;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      transition: color 0.2s;
+    }
+    .bottom-nav button.active { color: var(--cyan); }
+    .bottom-nav button svg { width: 22px; height: 22px; }
+
+    /* Refresh btn */
+    .refresh-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .spinning { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .no-data { text-align: center; color: var(--muted); padding: 40px 0; font-size: 13px; }
+    .chip {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .chip-green { background: rgba(29,158,117,0.15); color: var(--green); }
+    .chip-red { background: rgba(216,90,48,0.15); color: var(--red); }
+    .chip-blue { background: rgba(0,212,255,0.1); color: var(--cyan); }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div>
+    <h1>BTC <span>Algo</span></h1>
+  </div>
+  <div style="text-align:right">
+    <div class="btc-price" id="btcPrice">Loading...</div>
+    <div class="last-update" id="lastUpdate">--</div>
+  </div>
+</div>
+
+<!-- Top Nav -->
+<div class="nav">
+  <button class="active" onclick="switchPage('dashboard')">Dashboard</button>
+  <button onclick="switchPage('positions')">Positions</button>
+  <button onclick="switchPage('trades')">Trades</button>
+  <button onclick="switchPage('settings')">Settings</button>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- ── DASHBOARD PAGE ── -->
+<div class="page active" id="page-dashboard">
+  <div class="card">
+    <div class="card-title">Virtual Capital</div>
+    <div class="metrics">
+      <div class="metric">
+        <div class="metric-label">S10 Weekly</div>
+        <div class="metric-value cyan" id="s10Capital">₹--</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">S11 Daily</div>
+        <div class="metric-value cyan" id="s11Capital">₹--</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">S10 PnL</div>
+        <div class="metric-value" id="s10Pnl">--</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">S11 PnL</div>
+        <div class="metric-value" id="s11Pnl">--</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Combined Performance</div>
+    <div class="metrics">
+      <div class="metric">
+        <div class="metric-label">Total PnL</div>
+        <div class="metric-value" id="totalPnl">--</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Return %</div>
+        <div class="metric-value" id="totalReturn">--</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">S10 Trades</div>
+        <div class="metric-value cyan" id="s10TradeCount">--</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">S11 Trades</div>
+        <div class="metric-value cyan" id="s11TradeCount">--</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Strategy Status</div>
+    <div class="strategy-row">
+      <div class="strategy-info">
+        <h3>Strategy 10 — Weekly</h3>
+        <p>7DTE strangle · 1DTE delta≈1 hedge</p>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="s10Toggle" onchange="toggleStrategy('s10', this.checked)"/>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="strategy-row">
+      <div class="strategy-info">
+        <h3>Strategy 11 — Daily</h3>
+        <p>0DTE strangle · 1DTE delta≈1 hedge</p>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="s11Toggle" onchange="toggleStrategy('s11', this.checked)"/>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+  </div>
+</div>
+
+<!-- ── POSITIONS PAGE ── -->
+<div class="page" id="page-positions">
+
+  <!-- S11 -->
+  <div class="card">
+    <div class="card-title">Strategy 11 — Current Position</div>
+    <div id="s11Position"><div class="no-data">Loading...</div></div>
+  </div>
+
+  <!-- S10 -->
+  <div class="card">
+    <div class="card-title">Strategy 10 — Current Position</div>
+    <div id="s10Position"><div class="no-data">Loading...</div></div>
+  </div>
+</div>
+
+<!-- ── TRADES PAGE ── -->
+<div class="page" id="page-trades">
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <span class="card-title" style="margin:0">Trade History</span>
+      <div>
+        <button onclick="filterTrades('all')" id="filterAll" class="chip chip-blue" style="cursor:pointer;margin-right:4px">All</button>
+        <button onclick="filterTrades('s10')" id="filterS10" class="chip" style="cursor:pointer;background:var(--border);color:var(--muted);margin-right:4px">S10</button>
+        <button onclick="filterTrades('s11')" id="filterS11" class="chip" style="cursor:pointer;background:var(--border);color:var(--muted)">S11</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto;padding:0 8px">
+      <table class="trade-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Strat</th>
+            <th>Call K</th>
+            <th>Put K</th>
+            <th>PnL</th>
+            <th>Cum</th>
+          </tr>
+        </thead>
+        <tbody id="tradeBody">
+          <tr><td colspan="6" class="no-data">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Win Rate</div>
+    <div class="metrics" id="winRateMetrics">
+      <div class="metric"><div class="metric-label">S10 Win Rate</div><div class="metric-value green" id="s10WinRate">--</div></div>
+      <div class="metric"><div class="metric-label">S11 Win Rate</div><div class="metric-value green" id="s11WinRate">--</div></div>
+      <div class="metric"><div class="metric-label">S10 Avg Win</div><div class="metric-value green" id="s10AvgWin">--</div></div>
+      <div class="metric"><div class="metric-label">S11 Avg Win</div><div class="metric-value green" id="s11AvgWin">--</div></div>
+      <div class="metric"><div class="metric-label">S10 Avg Loss</div><div class="metric-value red" id="s10AvgLoss">--</div></div>
+      <div class="metric"><div class="metric-label">S11 Avg Loss</div><div class="metric-value red" id="s11AvgLoss">--</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SETTINGS PAGE ── -->
+<div class="page" id="page-settings">
+  <div class="card">
+    <div class="card-title">BTC Quantity</div>
+    <div class="setting-row">
+      <div class="setting-label">Strategy 10 — BTC per trade</div>
+      <div class="setting-sub">Virtual quantity for tracking. Default: 0.001</div>
+      <input class="setting-input" type="number" id="s10Qty" step="0.001" min="0.001" placeholder="0.001"/>
+      <button class="btn btn-primary" onclick="saveQty('s10')">Save S10 Quantity</button>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">Strategy 11 — BTC per trade</div>
+      <div class="setting-sub">Virtual quantity for tracking. Default: 0.001</div>
+      <input class="setting-input" type="number" id="s11Qty" step="0.001" min="0.001" placeholder="0.001"/>
+      <button class="btn btn-primary" onclick="saveQty('s11')">Save S11 Quantity</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Connection</div>
+    <div class="setting-row">
+      <div class="setting-label">Supabase URL</div>
+      <input class="setting-input" type="text" id="supabaseUrl" placeholder="https://xxx.supabase.co"/>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">Supabase Anon Key</div>
+      <input class="setting-input" type="password" id="supabaseKey" placeholder="your-anon-key"/>
+      <button class="btn btn-primary" onclick="saveConnection()" style="margin-top:12px">Save & Connect</button>
+    </div>
+    <div id="connectionStatus" style="margin-top:8px;font-size:12px;color:var(--muted)"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Auto Refresh</div>
+    <div class="setting-row">
+      <div class="setting-label">Refresh interval</div>
+      <select class="setting-input" id="refreshInterval" onchange="setRefreshInterval()">
+        <option value="30000">Every 30 seconds</option>
+        <option value="60000" selected>Every 1 minute</option>
+        <option value="300000">Every 5 minutes</option>
+        <option value="0">Manual only</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Install App</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px">
+      Add to home screen for app-like experience:
+      <br/><br/>
+      Android: Menu (⋮) → Add to Home Screen<br/>
+      iPhone: Share (□↑) → Add to Home Screen
+    </div>
+    <button class="btn btn-success" id="installBtn" style="display:none" onclick="installPWA()">📲 Install App</button>
+  </div>
+</div>
+
+<!-- Bottom Navigation -->
+<div class="bottom-nav">
+  <button class="active" onclick="switchPage('dashboard')" id="nav-dashboard">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+      <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+    </svg>
+    Dashboard
+  </button>
+  <button onclick="switchPage('positions')" id="nav-positions">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+      <line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+    Positions
+  </button>
+  <button onclick="switchPage('trades')" id="nav-trades">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </svg>
+    Trades
+  </button>
+  <button onclick="switchPage('settings')" id="nav-settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+    Settings
+  </button>
+</div>
+
+<script>
+// ── Config ─────────────────────────────────────────────────
+const DELTA_BASE = 'https://api.india.delta.exchange';
+let SUPABASE_URL = localStorage.getItem('sb_url') || '';
+let SUPABASE_KEY = localStorage.getItem('sb_key') || '';
+let allTrades = [];
+let refreshTimer = null;
+let deferredPrompt = null;
+
+// ── Init ───────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  loadSettings();
+  if (SUPABASE_URL && SUPABASE_KEY) {
+    refreshAll();
+    setRefreshInterval();
+  }
+});
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBtn').style.display = 'block';
+});
+
+// ── Navigation ─────────────────────────────────────────────
+function switchPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.getElementById('nav-' + page).classList.add('active');
+  const navBtns = document.querySelectorAll('.nav button');
+  const pages = ['dashboard','positions','trades','settings'];
+  navBtns[pages.indexOf(page)].classList.add('active');
+}
+
+// ── Supabase fetch ──────────────────────────────────────────
+async function sbGet(table, params='') {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+    }
+  });
+  if (!r.ok) return null;
+  return r.json();
+}
+
+async function sbPatch(table, filter, body) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${filter}`, {
+    method: 'PATCH',
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal',
+    },
+    body: JSON.stringify(body),
+  });
+  return r.ok;
+}
+
+// ── BTC Price ───────────────────────────────────────────────
+async function fetchBtcPrice() {
+  try {
+    const r = await fetch(`${DELTA_BASE}/v2/tickers/BTCUSD`);
+    const d = await r.json();
+    const price = parseFloat(d.result.mark_price);
+    document.getElementById('btcPrice').textContent = '$' + price.toLocaleString('en-IN', {maximumFractionDigits:0});
+    document.getElementById('lastUpdate').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  } catch(e) {
+    document.getElementById('btcPrice').textContent = 'Error';
+  }
+}
+
+// ── Capital ─────────────────────────────────────────────────
+async function fetchCapital() {
+  const data = await sbGet('capital', 'select=*');
+  if (!data) return;
+  let totalPnl = 0;
+  let totalCapital = 40000;
+  data.forEach(row => {
+    const pnl = parseFloat(row.cum_pnl || 0);
+    const cap = parseFloat(row.virtual_capital || 20000);
+    totalPnl += pnl;
+    if (row.strategy === 's10') {
+      document.getElementById('s10Capital').textContent = '₹' + Math.round(cap).toLocaleString('en-IN');
+      const el = document.getElementById('s10Pnl');
+      el.textContent = (pnl >= 0 ? '+' : '') + pnl.toFixed(2);
+      el.className = 'metric-value ' + (pnl >= 0 ? 'green' : 'red');
+    }
+    if (row.strategy === 's11') {
+      document.getElementById('s11Capital').textContent = '₹' + Math.round(cap).toLocaleString('en-IN');
+      const el = document.getElementById('s11Pnl');
+      el.textContent = (pnl >= 0 ? '+' : '') + pnl.toFixed(2);
+      el.className = 'metric-value ' + (pnl >= 0 ? 'green' : 'red');
+    }
+  });
+  const totalEl = document.getElementById('totalPnl');
+  totalEl.textContent = (totalPnl >= 0 ? '+' : '') + totalPnl.toFixed(2);
+  totalEl.className = 'metric-value ' + (totalPnl >= 0 ? 'green' : 'red');
+  const ret = (totalPnl / totalCapital * 100).toFixed(2);
+  const retEl = document.getElementById('totalReturn');
+  retEl.textContent = (totalPnl >= 0 ? '+' : '') + ret + '%';
+  retEl.className = 'metric-value ' + (totalPnl >= 0 ? 'green' : 'red');
+}
+
+// ── Positions ───────────────────────────────────────────────
+async function fetchPositions() {
+  const data = await sbGet('positions', 'select=*');
+  renderPosition('s11', data);
+  renderPosition('s10', data);
+}
+
+function renderPosition(strategy, data) {
+  const el = document.getElementById(strategy + 'Position');
+  const pos = data && data.find(r => r.strategy === strategy);
+  if (!pos || !pos.state || pos.state.status !== 'open') {
+    el.innerHTML = '<div class="no-data">No open position</div>';
+    return;
+  }
+  const s = pos.state;
+  const hedge = s.hedge || s.dyn_hedge;
+  const midPnl = parseFloat(s.mid_hedge_pnl || s.mid_dyn_pnl || 0);
+  const events = (s.events || []);
+  el.innerHTML = `
+    <div class="position-badge open"><span class="dot"></span> OPEN</div>
+    <div class="kv-row"><span class="kv-key">Cycle Date</span><span class="kv-val">${s.cycle_date || '--'}</span></div>
+    <div class="kv-row"><span class="kv-key">BTC Entry</span><span class="kv-val cyan">$${parseFloat(s.btc_entry||0).toLocaleString()}</span></div>
+    <div class="kv-row"><span class="kv-key">Short Call K</span><span class="kv-val">${s.call_k || '--'} @ $${parseFloat(s.call_prem||0).toFixed(2)}</span></div>
+    <div class="kv-row"><span class="kv-key">Short Put K</span><span class="kv-val">${s.put_k || '--'} @ $${parseFloat(s.put_prem||0).toFixed(2)}</span></div>
+    <div class="kv-row"><span class="kv-key">Hedge</span><span class="kv-val ${hedge ? 'amber' : ''}">${hedge ? hedge.opt_type + ' K=' + hedge.K + ' (' + hedge.breach + ')' : 'None'}</span></div>
+    <div class="kv-row"><span class="kv-key">Mid Hedge PnL</span><span class="kv-val ${midPnl>=0?'green':'red'}">${midPnl>=0?'+':''}${midPnl.toFixed(2)}</span></div>
+    <div style="margin-top:12px;font-size:11px;color:var(--muted);font-weight:700;margin-bottom:6px">EVENTS</div>
+    <div class="events-log">${events.map(e=>`<div>${e}</div>`).join('') || '<div>No events yet</div>'}</div>
+  `;
+}
+
+// ── Trades ──────────────────────────────────────────────────
+async function fetchTrades() {
+  const data = await sbGet('trades', 'select=*&order=id.desc&limit=100');
+  if (!data) return;
+  allTrades = data;
+  renderTrades(data);
+  computeStats(data);
+
+  // trade counts
+  document.getElementById('s10TradeCount').textContent = data.filter(t => t.strategy === 's10').length;
+  document.getElementById('s11TradeCount').textContent = data.filter(t => t.strategy === 's11').length;
+}
+
+function renderTrades(data) {
+  const tbody = document.getElementById('tradeBody');
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="no-data">No trades yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(t => {
+    const pnl = parseFloat(t.day_pnl || 0);
+    const cum = parseFloat(t.cum_pnl || 0);
+    return `<tr>
+      <td>${t.cycle_date || '--'}</td>
+      <td><span class="chip ${t.strategy==='s10'?'chip-blue':'chip-green'}">${t.strategy.toUpperCase()}</span></td>
+      <td>${t.call_k || '--'}</td>
+      <td>${t.put_k || '--'}</td>
+      <td class="${pnl>=0?'win':'loss'}">${pnl>=0?'+':''}${pnl.toFixed(2)}</td>
+      <td class="${cum>=0?'win':'loss'}">${cum>=0?'+':''}${cum.toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterTrades(f) {
+  ['all','s10','s11'].forEach(id => {
+    const btn = document.getElementById('filter' + id.charAt(0).toUpperCase() + id.slice(1));
+    btn.className = 'chip ' + (id === f ? 'chip-blue' : '');
+    if (id !== f) btn.style.cssText = 'cursor:pointer;background:var(--border);color:var(--muted)';
+    else btn.style.cssText = 'cursor:pointer';
+  });
+  const filtered = f === 'all' ? allTrades : allTrades.filter(t => t.strategy === f);
+  renderTrades(filtered);
+}
+
+function computeStats(data) {
+  ['s10','s11'].forEach(s => {
+    const trades = data.filter(t => t.strategy === s);
+    const wins = trades.filter(t => parseFloat(t.day_pnl) > 0);
+    const losses = trades.filter(t => parseFloat(t.day_pnl) < 0);
+    const wr = trades.length ? (wins.length / trades.length * 100).toFixed(0) + '%' : '--';
+    const avgW = wins.length ? '+$' + (wins.reduce((a,t) => a + parseFloat(t.day_pnl), 0) / wins.length).toFixed(2) : '--';
+    const avgL = losses.length ? '-$' + Math.abs(losses.reduce((a,t) => a + parseFloat(t.day_pnl), 0) / losses.length).toFixed(2) : '--';
+    document.getElementById(s + 'WinRate').textContent = wr;
+    document.getElementById(s + 'AvgWin').textContent = avgW;
+    document.getElementById(s + 'AvgLoss').textContent = avgL;
+  });
+}
+
+// ── Strategy toggles ────────────────────────────────────────
+async function toggleStrategy(strategy, enabled) {
+  // Save toggle state to localStorage (scheduler reads S10_ENABLED/S11_ENABLED from config.py)
+  // For now save intent locally and show instruction
+  localStorage.setItem(strategy + '_enabled', enabled);
+  toast(`Strategy ${strategy.toUpperCase()} ${enabled ? 'enabled' : 'disabled'} — update config.py to persist`);
+}
+
+// ── Settings ────────────────────────────────────────────────
+function loadSettings() {
+  document.getElementById('supabaseUrl').value = SUPABASE_URL;
+  document.getElementById('supabaseKey').value = SUPABASE_KEY;
+  const s10Qty = localStorage.getItem('s10_qty') || '0.001';
+  const s11Qty = localStorage.getItem('s11_qty') || '0.001';
+  document.getElementById('s10Qty').value = s10Qty;
+  document.getElementById('s11Qty').value = s11Qty;
+  document.getElementById('s10Toggle').checked = localStorage.getItem('s10_enabled') !== 'false';
+  document.getElementById('s11Toggle').checked = localStorage.getItem('s11_enabled') !== 'false';
+}
+
+async function saveConnection() {
+  const url = document.getElementById('supabaseUrl').value.trim().replace(/\/$/, '');
+  const key = document.getElementById('supabaseKey').value.trim();
+  if (!url || !key) { toast('Please enter both URL and key'); return; }
+  SUPABASE_URL = url;
+  SUPABASE_KEY = key;
+  localStorage.setItem('sb_url', url);
+  localStorage.setItem('sb_key', key);
+  const el = document.getElementById('connectionStatus');
+  el.textContent = 'Testing connection...';
+  const data = await sbGet('capital', 'select=strategy&limit=1');
+  if (data !== null) {
+    el.textContent = '✅ Connected successfully';
+    el.style.color = 'var(--green)';
+    toast('Connected! Loading data...');
+    refreshAll();
+    setRefreshInterval();
+  } else {
+    el.textContent = '❌ Connection failed — check URL and key';
+    el.style.color = 'var(--red)';
+  }
+}
+
+function saveQty(strategy) {
+  const val = document.getElementById(strategy + 'Qty').value;
+  if (!val || isNaN(val) || parseFloat(val) <= 0) { toast('Enter a valid quantity'); return; }
+  localStorage.setItem(strategy + '_qty', val);
+  toast(`${strategy.toUpperCase()} quantity saved: ${val} BTC`);
+}
+
+function setRefreshInterval() {
+  if (refreshTimer) clearInterval(refreshTimer);
+  const ms = parseInt(document.getElementById('refreshInterval').value);
+  if (ms > 0) refreshTimer = setInterval(refreshAll, ms);
+}
+
+// ── Refresh all ─────────────────────────────────────────────
+async function refreshAll() {
+  fetchBtcPrice();
+  if (SUPABASE_URL && SUPABASE_KEY) {
+    fetchCapital();
+    fetchPositions();
+    fetchTrades();
+  }
+}
+
+// ── Toast ────────────────────────────────────────────────────
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ── PWA Install ──────────────────────────────────────────────
+async function installPWA() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const result = await deferredPrompt.userChoice;
+  if (result.outcome === 'accepted') toast('App installed! 🎉');
+  deferredPrompt = null;
+}
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js');
+    });
+  }
+</script>
+</body>
+</html>
