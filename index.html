@@ -4,669 +4,493 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
   <meta name="theme-color" content="#0d0f14"/>
-  <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <meta name="mobile-web-app-capable" content="yes"/>
-  <title>BTC Algo Monitor</title>
+  <title>BTC Algo — Strategy Manager</title>
   <link rel="manifest" href="manifest.json"/>
+  <!-- Monaco Editor -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
   <style>
     :root {
-      --bg: #0d0f14;
-      --card: #161922;
-      --border: #1f2433;
-      --green: #1D9E75;
-      --red: #D85A30;
-      --cyan: #00d4ff;
-      --amber: #f9a825;
-      --purple: #7F77DD;
-      --text: #e8eaf0;
-      --muted: #6b7280;
-      --radius: 12px;
+      --bg: #0d0f14; --card: #161922; --border: #1f2433;
+      --green: #1D9E75; --red: #D85A30; --cyan: #00d4ff;
+      --amber: #f9a825; --purple: #7F77DD;
+      --text: #e8eaf0; --muted: #6b7280; --radius: 12px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 14px;
-      min-height: 100vh;
-      padding-bottom: 80px;
-    }
+    body { background: var(--bg); color: var(--text);
+           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           font-size: 14px; min-height: 100vh; padding-bottom: 80px; }
 
     /* Header */
-    .header {
-      background: var(--card);
-      border-bottom: 1px solid var(--border);
-      padding: 16px 20px;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .header h1 { font-size: 18px; font-weight: 700; }
+    .header { background: var(--card); border-bottom: 1px solid var(--border);
+               padding: 14px 16px; position: sticky; top: 0; z-index: 100;
+               display: flex; align-items: center; justify-content: space-between; }
+    .header h1 { font-size: 17px; font-weight: 700; }
     .header h1 span { color: var(--cyan); }
-    .btc-price {
-      font-size: 16px;
-      font-weight: 700;
-      color: var(--cyan);
-      font-family: monospace;
-    }
-    .last-update { font-size: 11px; color: var(--muted); margin-top: 2px; text-align: right; }
+    .btc-price { font-size: 15px; font-weight: 700; color: var(--cyan); font-family: monospace; }
 
     /* Nav */
-    .nav {
-      display: flex;
-      background: var(--card);
-      border-bottom: 1px solid var(--border);
-      overflow-x: auto;
-    }
-    .nav button {
-      flex: 1;
-      padding: 12px 8px;
-      background: none;
-      border: none;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      border-bottom: 2px solid transparent;
-      white-space: nowrap;
-      transition: all 0.2s;
-    }
-    .nav button.active {
-      color: var(--cyan);
-      border-bottom-color: var(--cyan);
-    }
+    .nav { display: flex; background: var(--card);
+            border-bottom: 1px solid var(--border); overflow-x: auto; }
+    .nav button { flex: 1; padding: 12px 8px; background: none; border: none;
+                   color: var(--muted); font-size: 13px; font-weight: 600;
+                   cursor: pointer; border-bottom: 2px solid transparent;
+                   white-space: nowrap; transition: all 0.2s; }
+    .nav button.active { color: var(--cyan); border-bottom-color: var(--cyan); }
 
     /* Pages */
-    .page { display: none; padding: 16px; }
+    .page { display: none; padding: 14px; }
     .page.active { display: block; }
 
     /* Cards */
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px;
-      margin-bottom: 12px;
-    }
-    .card-title {
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 12px;
-    }
+    .card { background: var(--card); border: 1px solid var(--border);
+             border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
+    .card-title { font-size: 11px; font-weight: 700; color: var(--muted);
+                   text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
 
-    /* Metrics grid */
+    /* Metrics */
     .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .metric { background: var(--bg); border-radius: 8px; padding: 12px; }
     .metric-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
     .metric-value { font-size: 18px; font-weight: 700; font-family: monospace; }
-    .metric-value.green { color: var(--green); }
-    .metric-value.red { color: var(--red); }
-    .metric-value.cyan { color: var(--cyan); }
-    .metric-value.amber { color: var(--amber); }
+    .green { color: var(--green); } .red { color: var(--red); }
+    .cyan  { color: var(--cyan);  } .amber { color: var(--amber); }
 
-    /* Strategy toggle */
-    .strategy-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 14px 0;
-      border-bottom: 1px solid var(--border);
+    /* Strategy list */
+    .strategy-item {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px; margin-bottom: 10px;
+      cursor: pointer; transition: border-color 0.2s;
     }
-    .strategy-row:last-child { border-bottom: none; }
-    .strategy-info h3 { font-size: 15px; font-weight: 700; }
-    .strategy-info p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .strategy-item:hover { border-color: var(--cyan); }
+    .strategy-item.selected { border-color: var(--cyan); }
+    .strategy-header { display: flex; align-items: center;
+                        justify-content: space-between; margin-bottom: 6px; }
+    .strategy-name { font-size: 15px; font-weight: 700; }
+    .strategy-desc { font-size: 12px; color: var(--muted); }
+    .strategy-actions { display: flex; gap: 8px; margin-top: 10px; }
 
-    /* Toggle switch */
-    .toggle {
-      position: relative;
-      width: 52px;
-      height: 28px;
-    }
+    /* Toggle */
+    .toggle { position: relative; width: 48px; height: 26px; }
     .toggle input { opacity: 0; width: 0; height: 0; }
-    .toggle-slider {
-      position: absolute;
-      inset: 0;
-      background: var(--border);
-      border-radius: 28px;
-      cursor: pointer;
-      transition: 0.3s;
-    }
-    .toggle-slider:before {
-      content: '';
-      position: absolute;
-      width: 20px; height: 20px;
-      left: 4px; top: 4px;
-      background: var(--muted);
-      border-radius: 50%;
-      transition: 0.3s;
-    }
+    .toggle-slider { position: absolute; inset: 0; background: var(--border);
+                      border-radius: 26px; cursor: pointer; transition: 0.3s; }
+    .toggle-slider:before { content: ''; position: absolute; width: 18px; height: 18px;
+                              left: 4px; top: 4px; background: var(--muted);
+                              border-radius: 50%; transition: 0.3s; }
     .toggle input:checked + .toggle-slider { background: var(--green); }
-    .toggle input:checked + .toggle-slider:before {
-      transform: translateX(24px);
-      background: white;
-    }
+    .toggle input:checked + .toggle-slider:before { transform: translateX(22px); background: white; }
 
-    /* Position card */
-    .position-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 700;
-      margin-bottom: 12px;
-    }
-    .position-badge.open { background: rgba(29,158,117,0.15); color: var(--green); }
-    .position-badge.closed { background: rgba(107,114,128,0.15); color: var(--muted); }
-    .position-badge.dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: currentColor;
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
+    /* Buttons */
+    .btn { display: inline-flex; align-items: center; justify-content: center;
+            gap: 6px; padding: 9px 16px; border-radius: 8px; border: none;
+            font-size: 13px; font-weight: 600; cursor: pointer;
+            transition: opacity 0.2s; }
+    .btn:active { opacity: 0.7; }
+    .btn-primary { background: var(--cyan); color: #0d0f14; }
+    .btn-success { background: rgba(29,158,117,0.15); color: var(--green);
+                    border: 1px solid var(--green); }
+    .btn-danger  { background: rgba(216,90,48,0.15); color: var(--red);
+                    border: 1px solid var(--red); }
+    .btn-ghost   { background: var(--border); color: var(--text); }
+    .btn-sm      { padding: 6px 12px; font-size: 12px; }
+    .btn-full    { width: 100%; margin-top: 8px; }
 
-    .kv-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px 0;
-      border-bottom: 1px solid var(--border);
-      font-size: 13px;
-    }
+    /* Status badge */
+    .badge { display: inline-block; padding: 3px 8px; border-radius: 20px;
+              font-size: 11px; font-weight: 700; }
+    .badge-green { background: rgba(29,158,117,0.15); color: var(--green); }
+    .badge-red   { background: rgba(216,90,48,0.15);  color: var(--red); }
+    .badge-muted { background: var(--border); color: var(--muted); }
+
+    /* Editor panel */
+    .editor-panel { display: none; position: fixed; inset: 0; z-index: 200;
+                     background: var(--bg); flex-direction: column; }
+    .editor-panel.open { display: flex; }
+    .editor-header { background: var(--card); border-bottom: 1px solid var(--border);
+                      padding: 12px 16px; display: flex; align-items: center;
+                      gap: 10px; flex-shrink: 0; }
+    .editor-title  { font-size: 15px; font-weight: 700; flex: 1; }
+    .editor-body   { flex: 1; overflow: hidden; }
+    .editor-footer { background: var(--card); border-top: 1px solid var(--border);
+                      padding: 10px 16px; display: flex; gap: 8px;
+                      flex-shrink: 0; flex-wrap: wrap; }
+    .schedule-hint { font-size: 11px; color: var(--muted); padding: 8px 12px;
+                      background: var(--bg); border-radius: 6px;
+                      font-family: monospace; white-space: pre; overflow-x: auto; }
+
+    /* Toast */
+    .toast { position: fixed; bottom: 90px; left: 50%;
+               transform: translateX(-50%) translateY(20px);
+               background: var(--card); border: 1px solid var(--border);
+               border-radius: 8px; padding: 10px 20px; font-size: 13px;
+               opacity: 0; transition: all 0.3s; white-space: nowrap;
+               pointer-events: none; z-index: 999; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* KV row */
+    .kv-row { display: flex; justify-content: space-between;
+               align-items: center; padding: 8px 0;
+               border-bottom: 1px solid var(--border); font-size: 13px; }
     .kv-row:last-child { border-bottom: none; }
     .kv-key { color: var(--muted); }
     .kv-val { font-weight: 600; font-family: monospace; }
-    .kv-val.green { color: var(--green); }
-    .kv-val.red { color: var(--red); }
-    .kv-val.cyan { color: var(--cyan); }
-    .kv-val.amber { color: var(--amber); }
-
-    /* Events log */
-    .events-log {
-      background: var(--bg);
-      border-radius: 8px;
-      padding: 10px;
-      max-height: 200px;
-      overflow-y: auto;
-      font-size: 11px;
-      font-family: monospace;
-      color: var(--muted);
-      line-height: 1.8;
-    }
 
     /* Trade table */
     .trade-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    .trade-table th {
-      text-align: left;
-      padding: 8px 6px;
-      color: var(--muted);
-      font-weight: 600;
-      border-bottom: 1px solid var(--border);
-      font-size: 11px;
-      text-transform: uppercase;
-    }
-    .trade-table td {
-      padding: 10px 6px;
-      border-bottom: 1px solid var(--border);
-      font-family: monospace;
-    }
+    .trade-table th { text-align: left; padding: 8px 6px; color: var(--muted);
+                       font-weight: 600; border-bottom: 1px solid var(--border);
+                       font-size: 11px; text-transform: uppercase; }
+    .trade-table td { padding: 9px 6px; border-bottom: 1px solid var(--border);
+                       font-family: monospace; }
     .trade-table tr:last-child td { border-bottom: none; }
-    .win { color: var(--green); }
-    .loss { color: var(--red); }
-
-    /* Settings */
-    .setting-row {
-      padding: 14px 0;
-      border-bottom: 1px solid var(--border);
-    }
-    .setting-row:last-child { border-bottom: none; }
-    .setting-label { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
-    .setting-sub { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
-    .setting-input {
-      width: 100%;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 12px;
-      color: var(--text);
-      font-size: 14px;
-      font-family: monospace;
-    }
-    .setting-input:focus {
-      outline: none;
-      border-color: var(--cyan);
-    }
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      padding: 10px 20px;
-      border-radius: 8px;
-      border: none;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity 0.2s;
-      width: 100%;
-      margin-top: 8px;
-    }
-    .btn:active { opacity: 0.7; }
-    .btn-primary { background: var(--cyan); color: #0d0f14; }
-    .btn-danger { background: rgba(216,90,48,0.15); color: var(--red); border: 1px solid var(--red); }
-    .btn-success { background: rgba(29,158,117,0.15); color: var(--green); border: 1px solid var(--green); }
-
-    /* Toast */
-    .toast {
-      position: fixed;
-      bottom: 90px;
-      left: 50%;
-      transform: translateX(-50%) translateY(20px);
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 20px;
-      font-size: 13px;
-      opacity: 0;
-      transition: all 0.3s;
-      white-space: nowrap;
-      pointer-events: none;
-      z-index: 999;
-    }
-    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .win { color: var(--green); } .loss { color: var(--red); }
 
     /* Bottom nav */
-    .bottom-nav {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: var(--card);
-      border-top: 1px solid var(--border);
-      display: flex;
-      padding: 8px 0;
-      z-index: 100;
-    }
-    .bottom-nav button {
-      flex: 1;
-      background: none;
-      border: none;
-      color: var(--muted);
-      font-size: 10px;
-      font-weight: 600;
-      cursor: pointer;
-      padding: 4px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      transition: color 0.2s;
-    }
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0;
+                   background: var(--card); border-top: 1px solid var(--border);
+                   display: flex; padding: 8px 0; z-index: 100; }
+    .bottom-nav button { flex: 1; background: none; border: none; color: var(--muted);
+                          font-size: 10px; font-weight: 600; cursor: pointer; padding: 4px;
+                          display: flex; flex-direction: column; align-items: center;
+                          gap: 4px; transition: color 0.2s; }
     .bottom-nav button.active { color: var(--cyan); }
     .bottom-nav button svg { width: 22px; height: 22px; }
-
-    /* Refresh btn */
-    .refresh-btn {
-      background: none;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--muted);
-      padding: 6px 10px;
-      cursor: pointer;
-      font-size: 16px;
-    }
-    .spinning { animation: spin 1s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
     .no-data { text-align: center; color: var(--muted); padding: 40px 0; font-size: 13px; }
-    .chip {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 11px;
-      font-weight: 700;
-    }
-    .chip-green { background: rgba(29,158,117,0.15); color: var(--green); }
-    .chip-red { background: rgba(216,90,48,0.15); color: var(--red); }
-    .chip-blue { background: rgba(0,212,255,0.1); color: var(--cyan); }
+
+    /* Scheduler status */
+    .sched-status { display: flex; align-items: center; gap: 8px; }
+    .sched-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .sched-dot.running { background: var(--green);
+                          animation: pulse 2s infinite; }
+    .sched-dot.stopped { background: var(--red); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
   </style>
 </head>
 <body>
 
-<!-- Header -->
 <div class="header">
-  <div>
-    <h1>BTC <span>Algo</span></h1>
-  </div>
+  <div><h1>BTC <span>Algo</span></h1></div>
   <div style="text-align:right">
-    <div class="btc-price" id="btcPrice">Loading...</div>
-    <div class="last-update" id="lastUpdate">--</div>
+    <div class="btc-price" id="btcPrice">--</div>
+    <div style="font-size:11px;color:var(--muted)" id="lastUpdate">--</div>
   </div>
 </div>
 
-<!-- Top Nav -->
 <div class="nav">
   <button class="active" onclick="switchPage('dashboard')">Dashboard</button>
+  <button onclick="switchPage('strategies')">Strategies</button>
   <button onclick="switchPage('positions')">Positions</button>
+  <button onclick="switchPage('brokers')">Brokers</button>
   <button onclick="switchPage('trades')">Trades</button>
-  <button onclick="switchPage('settings')">Settings</button>
 </div>
 
-<!-- Setup Banner -->
-<div id="setupBanner" style="display:none;background:#1a1200;border:1px solid #f9a825;margin:12px;border-radius:10px;padding:14px 16px;font-size:13px;color:#f9a825">
-  ⚙️ <strong>Setup required</strong> — go to <strong>Settings</strong> tab and enter your Supabase Anon Key to load data.
-</div>
 
-<!-- Toast -->
-<div class="toast" id="toast"></div>
+<!-- ── BROKERS ── -->
+<div class="page" id="page-brokers">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <span style="font-weight:700;font-size:15px">Broker Connections</span>
+    <button class="btn btn-primary btn-sm" onclick="showAddBroker()">+ Connect</button>
+  </div>
+  <div class="card" style="background:rgba(249,168,37,0.08);border-color:var(--amber)">
+    <div style="font-size:12px;color:var(--amber)">
+      ⚠️ <b>Security notice:</b> API keys are stored in Supabase. 
+      Use keys with <b>trading permissions only</b> — never deposit/withdrawal permissions.
+      You can clear keys anytime.
+    </div>
+  </div>
+  <div id="brokerList"><div class="no-data">Loading...</div></div>
 
-<!-- ── DASHBOARD PAGE ── -->
-<div class="page active" id="page-dashboard">
-  <div class="card">
-    <div class="card-title">Virtual Capital</div>
-    <div class="metrics">
-      <div class="metric">
-        <div class="metric-label">S10 Weekly</div>
-        <div class="metric-value cyan" id="s10Capital">₹--</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">S11 Daily</div>
-        <div class="metric-value cyan" id="s11Capital">₹--</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">S10 PnL</div>
-        <div class="metric-value" id="s10Pnl">--</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">S11 PnL</div>
-        <div class="metric-value" id="s11Pnl">--</div>
+  <!-- Add broker form -->
+  <div id="addBrokerForm" style="display:none">
+    <div class="card">
+      <div class="card-title">Connect Broker</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <select id="brokerType" style="background:var(--bg);border:1px solid var(--border);
+                color:var(--text);border-radius:8px;padding:10px;font-size:14px">
+          <option value="delta_india">Delta Exchange India</option>
+          <option value="delta_global">Delta Exchange Global</option>
+        </select>
+        <input id="brokerLabel" placeholder="Label (e.g. My Delta Account)"
+               style="background:var(--bg);border:1px solid var(--border);border-radius:8px;
+                      padding:10px;color:var(--text);font-size:14px"/>
+        <input id="brokerApiKey" placeholder="API Key" type="password"
+               style="background:var(--bg);border:1px solid var(--border);border-radius:8px;
+                      padding:10px;color:var(--text);font-size:14px;font-family:monospace"/>
+        <input id="brokerApiSecret" placeholder="API Secret" type="password"
+               style="background:var(--bg);border:1px solid var(--border);border-radius:8px;
+                      padding:10px;color:var(--text);font-size:14px;font-family:monospace"/>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="saveBroker()" style="flex:1">Save & Test</button>
+          <button class="btn btn-ghost" onclick="hideAddBroker()" style="flex:1">Cancel</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-title">Combined Performance</div>
-    <div class="metrics">
-      <div class="metric">
-        <div class="metric-label">Total PnL</div>
-        <div class="metric-value" id="totalPnl">--</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">Return %</div>
-        <div class="metric-value" id="totalReturn">--</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">S10 Trades</div>
-        <div class="metric-value cyan" id="s10TradeCount">--</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">S11 Trades</div>
-        <div class="metric-value cyan" id="s11TradeCount">--</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title">Strategy Status</div>
-    <div class="strategy-row">
-      <div class="strategy-info">
-        <h3>Strategy 10 — Weekly</h3>
-        <p>7DTE strangle · 1DTE delta≈1 hedge</p>
-      </div>
-      <label class="toggle">
-        <input type="checkbox" id="s10Toggle" onchange="toggleStrategy('s10', this.checked)"/>
-        <span class="toggle-slider"></span>
-      </label>
-    </div>
-    <div class="strategy-row">
-      <div class="strategy-info">
-        <h3>Strategy 11 — Daily</h3>
-        <p>0DTE strangle · 1DTE delta≈1 hedge</p>
-      </div>
-      <label class="toggle">
-        <input type="checkbox" id="s11Toggle" onchange="toggleStrategy('s11', this.checked)"/>
-        <span class="toggle-slider"></span>
-      </label>
-    </div>
-  </div>
-</div>
-
-<!-- ── POSITIONS PAGE ── -->
-<div class="page" id="page-positions">
-
-  <!-- S11 -->
-  <div class="card">
-    <div class="card-title">Strategy 11 — Current Position</div>
-    <div id="s11Position"><div class="no-data">Loading...</div></div>
-  </div>
-
-  <!-- S10 -->
-  <div class="card">
-    <div class="card-title">Strategy 10 — Current Position</div>
-    <div id="s10Position"><div class="no-data">Loading...</div></div>
-  </div>
-</div>
-
-<!-- ── TRADES PAGE ── -->
-<div class="page" id="page-trades">
-  <div class="card" style="padding:0;overflow:hidden">
-    <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-      <span class="card-title" style="margin:0">Trade History</span>
-      <div>
-        <button onclick="filterTrades('all')" id="filterAll" class="chip chip-blue" style="cursor:pointer;margin-right:4px">All</button>
-        <button onclick="filterTrades('s10')" id="filterS10" class="chip" style="cursor:pointer;background:var(--border);color:var(--muted);margin-right:4px">S10</button>
-        <button onclick="filterTrades('s11')" id="filterS11" class="chip" style="cursor:pointer;background:var(--border);color:var(--muted)">S11</button>
-      </div>
+  <!-- Orders log -->
+  <div class="card" style="padding:0;overflow:hidden;margin-top:12px">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+      <span class="card-title" style="margin:0">Order Log</span>
     </div>
     <div style="overflow-x:auto;padding:0 8px">
       <table class="trade-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Strat</th>
-            <th>Call K</th>
-            <th>Put K</th>
-            <th>PnL</th>
-            <th>Cum</th>
-          </tr>
-        </thead>
-        <tbody id="tradeBody">
-          <tr><td colspan="6" class="no-data">Loading...</td></tr>
-        </tbody>
+        <thead><tr>
+          <th>Time</th><th>Strategy</th><th>Mode</th>
+          <th>Symbol</th><th>Side</th><th>Qty</th><th>Status</th>
+        </tr></thead>
+        <tbody id="orderBody"><tr><td colspan="7" class="no-data">No orders yet</td></tr></tbody>
       </table>
     </div>
   </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ── DASHBOARD ── -->
+<div class="page active" id="page-dashboard">
+  <div class="card">
+    <div class="card-title">Scheduler</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div class="sched-status">
+        <div class="sched-dot stopped" id="schedDot"></div>
+        <span id="schedStatus" style="font-weight:600">Checking...</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-success btn-sm" onclick="sendControl('restart')">▶ Restart</button>
+        <button class="btn btn-danger btn-sm" onclick="sendControl('stop')">⏹ Stop</button>
+      </div>
+    </div>
+    <div id="activeStrategies" style="font-size:12px;color:var(--muted)">Loading...</div>
+  </div>
 
   <div class="card">
-    <div class="card-title">Win Rate</div>
-    <div class="metrics" id="winRateMetrics">
-      <div class="metric"><div class="metric-label">S10 Win Rate</div><div class="metric-value green" id="s10WinRate">--</div></div>
-      <div class="metric"><div class="metric-label">S11 Win Rate</div><div class="metric-value green" id="s11WinRate">--</div></div>
-      <div class="metric"><div class="metric-label">S10 Avg Win</div><div class="metric-value green" id="s10AvgWin">--</div></div>
-      <div class="metric"><div class="metric-label">S11 Avg Win</div><div class="metric-value green" id="s11AvgWin">--</div></div>
-      <div class="metric"><div class="metric-label">S10 Avg Loss</div><div class="metric-value red" id="s10AvgLoss">--</div></div>
-      <div class="metric"><div class="metric-label">S11 Avg Loss</div><div class="metric-value red" id="s11AvgLoss">--</div></div>
+    <div class="card-title">Virtual Capital</div>
+    <div class="metrics" id="capitalMetrics">
+      <div class="metric"><div class="metric-label">Total PnL</div>
+        <div class="metric-value" id="totalPnl">--</div></div>
+      <div class="metric"><div class="metric-label">Return %</div>
+        <div class="metric-value" id="totalReturn">--</div></div>
     </div>
+    <div id="stratCapitals" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Open Positions</div>
+    <div id="dashPositions"><div class="no-data">Loading...</div></div>
   </div>
 </div>
 
-<!-- ── SETTINGS PAGE ── -->
-<div class="page" id="page-settings">
-  <div class="card">
-    <div class="card-title">BTC Quantity</div>
-    <div class="setting-row">
-      <div class="setting-label">Strategy 10 — BTC per trade</div>
-      <div class="setting-sub">Virtual quantity for tracking. Default: 0.001</div>
-      <input class="setting-input" type="number" id="s10Qty" step="0.001" min="0.001" placeholder="0.001"/>
-      <button class="btn btn-primary" onclick="saveQty('s10')">Save S10 Quantity</button>
-    </div>
-    <div class="setting-row">
-      <div class="setting-label">Strategy 11 — BTC per trade</div>
-      <div class="setting-sub">Virtual quantity for tracking. Default: 0.001</div>
-      <input class="setting-input" type="number" id="s11Qty" step="0.001" min="0.001" placeholder="0.001"/>
-      <button class="btn btn-primary" onclick="saveQty('s11')">Save S11 Quantity</button>
-    </div>
+<!-- ── STRATEGIES ── -->
+<div class="page" id="page-strategies">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <span style="font-weight:700;font-size:15px">My Strategies</span>
+    <button class="btn btn-primary btn-sm" onclick="createStrategy()">+ New</button>
   </div>
+  <div id="strategyList"><div class="no-data">Loading...</div></div>
+</div>
 
-  <div class="card">
-    <div class="card-title">Connection</div>
-    <div class="setting-row">
-      <div class="setting-label">Supabase URL</div>
-      <input class="setting-input" type="text" id="supabaseUrl" placeholder="https://xxx.supabase.co"/>
-    </div>
-    <div class="setting-row">
-      <div class="setting-label">Supabase Anon Key</div>
-      <input class="setting-input" type="password" id="supabaseKey" placeholder="your-anon-key"/>
-      <button class="btn btn-primary" onclick="saveConnection()" style="margin-top:12px">Save & Connect</button>
-    </div>
-    <div id="connectionStatus" style="margin-top:8px;font-size:12px;color:var(--muted)"></div>
-  </div>
+<!-- ── POSITIONS ── -->
+<div class="page" id="page-positions">
+  <div id="positionsList"><div class="no-data">Loading...</div></div>
+</div>
 
-  <div class="card">
-    <div class="card-title">Auto Refresh</div>
-    <div class="setting-row">
-      <div class="setting-label">Refresh interval</div>
-      <select class="setting-input" id="refreshInterval" onchange="setRefreshInterval()">
-        <option value="30000">Every 30 seconds</option>
-        <option value="60000" selected>Every 1 minute</option>
-        <option value="300000">Every 5 minutes</option>
-        <option value="0">Manual only</option>
+<!-- ── TRADES ── -->
+<div class="page" id="page-trades">
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border);
+                display:flex;align-items:center;justify-content:space-between">
+      <span class="card-title" style="margin:0">Trade History</span>
+      <select id="tradeFilter" onchange="filterAndRenderTrades()"
+              style="background:var(--bg);border:1px solid var(--border);
+                     color:var(--text);border-radius:6px;padding:4px 8px;font-size:12px">
+        <option value="all">All</option>
       </select>
     </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title">Install App</div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:12px">
-      Add to home screen for app-like experience:
-      <br/><br/>
-      Android: Menu (⋮) → Add to Home Screen<br/>
-      iPhone: Share (□↑) → Add to Home Screen
+    <div style="overflow-x:auto;padding:0 8px">
+      <table class="trade-table">
+        <thead><tr>
+          <th>Date</th><th>Strat</th><th>Call K</th><th>Put K</th>
+          <th>PnL</th><th>Cum</th>
+        </tr></thead>
+        <tbody id="tradeBody"><tr><td colspan="6" class="no-data">Loading...</td></tr></tbody>
+      </table>
     </div>
-    <button class="btn btn-success" id="installBtn" style="display:none" onclick="installPWA()">📲 Install App</button>
+  </div>
+  <div class="card">
+    <div class="card-title">KPIs</div>
+    <div class="metrics" id="kpiMetrics">
+      <div class="metric"><div class="metric-label">Win Rate</div>
+        <div class="metric-value green" id="kpiWR">--</div></div>
+      <div class="metric"><div class="metric-label">Avg Win</div>
+        <div class="metric-value green" id="kpiAvgW">--</div></div>
+      <div class="metric"><div class="metric-label">Avg Loss</div>
+        <div class="metric-value red" id="kpiAvgL">--</div></div>
+      <div class="metric"><div class="metric-label">Max DD</div>
+        <div class="metric-value red" id="kpiDD">--</div></div>
+    </div>
   </div>
 </div>
 
-<!-- Bottom Navigation -->
+<!-- ── EDITOR PANEL ── -->
+<div class="editor-panel" id="editorPanel">
+  <div class="editor-header">
+    <button class="btn btn-ghost btn-sm" onclick="closeEditor()">✕</button>
+    <div class="editor-title" id="editorTitle">Strategy</div>
+    <span class="badge badge-muted" id="editorStatus">unsaved</span>
+  </div>
+
+  <!-- Name + Description inputs -->
+  <div style="background:var(--card);border-bottom:1px solid var(--border);
+              padding:10px 16px;display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
+    <input id="stratNameInput" placeholder="Strategy name (e.g. my_strategy)"
+           style="flex:1;min-width:140px;background:var(--bg);border:1px solid var(--border);
+                  border-radius:6px;padding:7px 10px;color:var(--text);font-size:13px"/>
+    <input id="stratDescInput" placeholder="Short description"
+           style="flex:2;min-width:160px;background:var(--bg);border:1px solid var(--border);
+                  border-radius:6px;padding:7px 10px;color:var(--text);font-size:13px"/>
+  </div>
+
+  <div class="editor-body" id="monacoContainer"></div>
+
+  <div style="background:var(--card);border-top:1px solid var(--border);
+                  padding:8px 16px;display:flex;align-items:center;
+                  gap:12px;flex-shrink:0">
+      <span style="font-size:12px;color:var(--muted);font-weight:600">MODE</span>
+      <div style="display:flex;background:var(--bg);border:1px solid var(--border);
+                  border-radius:8px;overflow:hidden">
+        <button id="modePaper" onclick="setMode('paper')"
+                style="padding:6px 14px;border:none;font-size:12px;
+                       font-weight:600;cursor:pointer;
+                       background:var(--cyan);color:#0d0f14">PAPER</button>
+        <button id="modeLive"  onclick="setMode('live')"
+                style="padding:6px 14px;border:none;font-size:12px;
+                       font-weight:600;cursor:pointer;
+                       background:transparent;color:var(--muted)">LIVE</button>
+      </div>
+      <select id="brokerSelect"
+              style="display:none;background:var(--bg);border:1px solid var(--border);
+                     color:var(--text);border-radius:6px;padding:6px 10px;font-size:12px">
+        <option value="">Select broker...</option>
+      </select>
+    </div>
+    <div class="editor-footer">
+    <button class="btn btn-primary" onclick="saveStrategy()">💾 Save</button>
+    <button class="btn btn-success" onclick="saveAndRestart()">💾 Save & Restart</button>
+    <button class="btn btn-danger" onclick="deleteStrategy()">🗑 Delete</button>
+    <div class="schedule-hint" style="flex:1;margin-top:4px"># SCHEDULE
+# entry: mon 12:00   (or: daily 03:30)
+# monitor: */5
+# exit: daily 12:00</div>
+  </div>
+</div>
+    </div>
+
+<!-- Bottom nav -->
 <div class="bottom-nav">
   <button class="active" onclick="switchPage('dashboard')" id="nav-dashboard">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
       <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
-    </svg>
-    Dashboard
+    </svg>Dashboard
+  </button>
+  <button onclick="switchPage('strategies')" id="nav-strategies">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+    </svg>Strategies
   </button>
   <button onclick="switchPage('positions')" id="nav-positions">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
       <line x1="12" y1="16" x2="12.01" y2="16"/>
-    </svg>
-    Positions
+    </svg>Positions
+  </button>
+  <button onclick="switchPage('brokers')" id="nav-brokers">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/></svg>Brokers
   </button>
   <button onclick="switchPage('trades')" id="nav-trades">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-    </svg>
-    Trades
-  </button>
-  <button onclick="switchPage('settings')" id="nav-settings">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <circle cx="12" cy="12" r="3"/>
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-    </svg>
-    Settings
+    </svg>Trades
   </button>
 </div>
 
 <script>
-// ── Config ─────────────────────────────────────────────────
+// ── Config ──────────────────────────────────────────────────
 const DELTA_BASE = 'https://api.india.delta.exchange';
-let SUPABASE_URL = (localStorage.getItem('sb_url') || 'https://uatylemdqlhcsbtifgau.supabase.co').trim();
-let SUPABASE_KEY = (localStorage.getItem('sb_key') || '').trim();
+let SB_URL = localStorage.getItem('sb_url') || 'https://uatylemdqlhcsbtifgau.supabase.co';
+let SB_KEY = localStorage.getItem('sb_key') || '';
 let allTrades = [];
+let allStrategies = [];
+let currentStrategyId = null;
+let monacoEditor = null;
 let refreshTimer = null;
-let deferredPrompt = null;
 
-// ── Init ───────────────────────────────────────────────────
+// ── Monaco init ─────────────────────────────────────────────
+require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' }});
+require(['vs/editor/editor.main'], () => {
+  monacoEditor = monaco.editor.create(document.getElementById('monacoContainer'), {
+    value: '',
+    language: 'python',
+    theme: 'vs-dark',
+    fontSize: 13,
+    minimap: { enabled: false },
+    lineNumbers: 'on',
+    scrollBeyondLastLine: false,
+    automaticLayout: true,
+    wordWrap: 'on',
+    fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+  });
+  monacoEditor.onDidChangeModelContent(() => {
+    document.getElementById('editorStatus').textContent = 'unsaved';
+    document.getElementById('editorStatus').className = 'badge badge-muted';
+  });
+});
+
+// ── Init ────────────────────────────────────────────────────
 window.addEventListener('load', () => {
-  loadSettings();
-  if (SUPABASE_URL && SUPABASE_KEY) {
+  if (SB_KEY) {
     refreshAll();
-    setRefreshInterval();
-  } else {
-    // Show setup banner
-    document.getElementById('setupBanner').style.display = 'block';
+    refreshTimer = setInterval(refreshAll, 60000);
   }
+  fetchBtcPrice();
+  setInterval(fetchBtcPrice, 30000);
 });
 
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  deferredPrompt = e;
-  document.getElementById('installBtn').style.display = 'block';
-});
-
-// ── Navigation ─────────────────────────────────────────────
-function switchPage(page) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.remove('active'));
-  document.getElementById('page-' + page).classList.add('active');
-  document.getElementById('nav-' + page).classList.add('active');
-  const navBtns = document.querySelectorAll('.nav button');
-  const pages = ['dashboard','positions','trades','settings'];
-  navBtns[pages.indexOf(page)].classList.add('active');
+// ── Supabase ────────────────────────────────────────────────
+async function sbGet(table, params='') {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}?${params}`, {
+    headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` }
+  });
+  if (!r.ok) return null;
+  return r.json();
 }
 
-// ── Supabase fetch ──────────────────────────────────────────
-async function sbGet(table, params='') {
-  if (!SUPABASE_URL || !SUPABASE_KEY) {
-    toast('Missing Supabase credentials — check Settings');
-    return null;
-  }
-  try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
-        'Content-Type': 'application/json',
-      }
-    });
-    if (!r.ok) {
-      const txt = await r.text();
-      toast(`DB error ${r.status}: ${txt.slice(0,60)}`);
-      console.error('Supabase error:', r.status, txt);
-      return null;
-    }
-    return r.json();
-  } catch(e) {
-    toast('Connection failed: ' + e.message.slice(0,50));
-    console.error('Fetch error:', e);
-    return null;
-  }
+async function sbPost(table, body) {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}`, {
+    method: 'POST',
+    headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`,
+                'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) { const t = await r.text(); throw new Error(t); }
+  return r.json();
 }
 
 async function sbPatch(table, filter, body) {
-  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${filter}`, {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}?${filter}`, {
     method: 'PATCH',
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=minimal',
-    },
-    body: JSON.stringify(body),
+    headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`,
+                'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) { const t = await r.text(); throw new Error(t); }
+  return r.json();
+}
+
+async function sbDelete(table, filter) {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}?${filter}`, {
+    method: 'DELETE',
+    headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` }
   });
   return r.ok;
 }
@@ -676,201 +500,541 @@ async function fetchBtcPrice() {
   try {
     const r = await fetch(`${DELTA_BASE}/v2/tickers/BTCUSD`);
     const d = await r.json();
-    const price = parseFloat(d.result.mark_price);
-    document.getElementById('btcPrice').textContent = '$' + price.toLocaleString('en-IN', {maximumFractionDigits:0});
-    document.getElementById('lastUpdate').textContent = 'Updated ' + new Date().toLocaleTimeString();
-  } catch(e) {
-    document.getElementById('btcPrice').textContent = 'API Error';
-    console.error('BTC fetch error:', e);
-  }
+    const p = parseFloat(d.result.mark_price);
+    document.getElementById('btcPrice').textContent = '$' + p.toLocaleString('en-IN',{maximumFractionDigits:0});
+    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+  } catch(e) {}
 }
 
-// ── Capital ─────────────────────────────────────────────────
-async function fetchCapital() {
-  const data = await sbGet('capital', 'select=*');
-  if (!data) return;
-  let totalPnl = 0;
-  let totalCapital = 40000;
-  data.forEach(row => {
-    const pnl = parseFloat(row.cum_pnl || 0);
-    const cap = parseFloat(row.virtual_capital || 20000);
-    totalPnl += pnl;
-    if (row.strategy === 's10') {
-      document.getElementById('s10Capital').textContent = '₹' + Math.round(cap).toLocaleString('en-IN');
-      const el = document.getElementById('s10Pnl');
-      el.textContent = (pnl >= 0 ? '+' : '') + pnl.toFixed(2);
-      el.className = 'metric-value ' + (pnl >= 0 ? 'green' : 'red');
-    }
-    if (row.strategy === 's11') {
-      document.getElementById('s11Capital').textContent = '₹' + Math.round(cap).toLocaleString('en-IN');
-      const el = document.getElementById('s11Pnl');
-      el.textContent = (pnl >= 0 ? '+' : '') + pnl.toFixed(2);
-      el.className = 'metric-value ' + (pnl >= 0 ? 'green' : 'red');
-    }
-  });
-  const totalEl = document.getElementById('totalPnl');
-  totalEl.textContent = (totalPnl >= 0 ? '+' : '') + totalPnl.toFixed(2);
-  totalEl.className = 'metric-value ' + (totalPnl >= 0 ? 'green' : 'red');
-  const ret = (totalPnl / totalCapital * 100).toFixed(2);
-  const retEl = document.getElementById('totalReturn');
-  retEl.textContent = (totalPnl >= 0 ? '+' : '') + ret + '%';
-  retEl.className = 'metric-value ' + (totalPnl >= 0 ? 'green' : 'red');
-}
-
-// ── Positions ───────────────────────────────────────────────
-async function fetchPositions() {
-  const data = await sbGet('positions', 'select=*');
-  renderPosition('s11', data);
-  renderPosition('s10', data);
-}
-
-function renderPosition(strategy, data) {
-  const el = document.getElementById(strategy + 'Position');
-  const pos = data && data.find(r => r.strategy === strategy);
-  if (!pos || !pos.state || pos.state.status !== 'open') {
-    el.innerHTML = '<div class="no-data">No open position</div>';
-    return;
-  }
-  const s = pos.state;
-  const hedge = s.hedge || s.dyn_hedge;
-  const midPnl = parseFloat(s.mid_hedge_pnl || s.mid_dyn_pnl || 0);
-  const events = (s.events || []);
-  el.innerHTML = `
-    <div class="position-badge open"><span class="dot"></span> OPEN</div>
-    <div class="kv-row"><span class="kv-key">Cycle Date</span><span class="kv-val">${s.cycle_date || '--'}</span></div>
-    <div class="kv-row"><span class="kv-key">BTC Entry</span><span class="kv-val cyan">$${parseFloat(s.btc_entry||0).toLocaleString()}</span></div>
-    <div class="kv-row"><span class="kv-key">Short Call K</span><span class="kv-val">${s.call_k || '--'} @ $${parseFloat(s.call_prem||0).toFixed(2)}</span></div>
-    <div class="kv-row"><span class="kv-key">Short Put K</span><span class="kv-val">${s.put_k || '--'} @ $${parseFloat(s.put_prem||0).toFixed(2)}</span></div>
-    <div class="kv-row"><span class="kv-key">Hedge</span><span class="kv-val ${hedge ? 'amber' : ''}">${hedge ? hedge.opt_type + ' K=' + hedge.K + ' (' + hedge.breach + ')' : 'None'}</span></div>
-    <div class="kv-row"><span class="kv-key">Mid Hedge PnL</span><span class="kv-val ${midPnl>=0?'green':'red'}">${midPnl>=0?'+':''}${midPnl.toFixed(2)}</span></div>
-    <div style="margin-top:12px;font-size:11px;color:var(--muted);font-weight:700;margin-bottom:6px">EVENTS</div>
-    <div class="events-log">${events.map(e=>`<div>${e}</div>`).join('') || '<div>No events yet</div>'}</div>
-  `;
-}
-
-// ── Trades ──────────────────────────────────────────────────
-async function fetchTrades() {
-  const data = await sbGet('trades', 'select=*&order=id.desc&limit=100');
-  if (!data) return;
-  allTrades = data;
-  renderTrades(data);
-  computeStats(data);
-
-  // trade counts
-  document.getElementById('s10TradeCount').textContent = data.filter(t => t.strategy === 's10').length;
-  document.getElementById('s11TradeCount').textContent = data.filter(t => t.strategy === 's11').length;
-}
-
-function renderTrades(data) {
-  const tbody = document.getElementById('tradeBody');
-  if (!data.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="no-data">No trades yet</td></tr>';
-    return;
-  }
-  tbody.innerHTML = data.map(t => {
-    const pnl = parseFloat(t.day_pnl || 0);
-    const cum = parseFloat(t.cum_pnl || 0);
-    return `<tr>
-      <td>${t.cycle_date || '--'}</td>
-      <td><span class="chip ${t.strategy==='s10'?'chip-blue':'chip-green'}">${t.strategy.toUpperCase()}</span></td>
-      <td>${t.call_k || '--'}</td>
-      <td>${t.put_k || '--'}</td>
-      <td class="${pnl>=0?'win':'loss'}">${pnl>=0?'+':''}${pnl.toFixed(2)}</td>
-      <td class="${cum>=0?'win':'loss'}">${cum>=0?'+':''}${cum.toFixed(2)}</td>
-    </tr>`;
-  }).join('');
-}
-
-function filterTrades(f) {
-  ['all','s10','s11'].forEach(id => {
-    const btn = document.getElementById('filter' + id.charAt(0).toUpperCase() + id.slice(1));
-    btn.className = 'chip ' + (id === f ? 'chip-blue' : '');
-    if (id !== f) btn.style.cssText = 'cursor:pointer;background:var(--border);color:var(--muted)';
-    else btn.style.cssText = 'cursor:pointer';
-  });
-  const filtered = f === 'all' ? allTrades : allTrades.filter(t => t.strategy === f);
-  renderTrades(filtered);
-}
-
-function computeStats(data) {
-  ['s10','s11'].forEach(s => {
-    const trades = data.filter(t => t.strategy === s);
-    const wins = trades.filter(t => parseFloat(t.day_pnl) > 0);
-    const losses = trades.filter(t => parseFloat(t.day_pnl) < 0);
-    const wr = trades.length ? (wins.length / trades.length * 100).toFixed(0) + '%' : '--';
-    const avgW = wins.length ? '+$' + (wins.reduce((a,t) => a + parseFloat(t.day_pnl), 0) / wins.length).toFixed(2) : '--';
-    const avgL = losses.length ? '-$' + Math.abs(losses.reduce((a,t) => a + parseFloat(t.day_pnl), 0) / losses.length).toFixed(2) : '--';
-    document.getElementById(s + 'WinRate').textContent = wr;
-    document.getElementById(s + 'AvgWin').textContent = avgW;
-    document.getElementById(s + 'AvgLoss').textContent = avgL;
-  });
-}
-
-// ── Strategy toggles ────────────────────────────────────────
-async function toggleStrategy(strategy, enabled) {
-  // Save toggle state to localStorage (scheduler reads S10_ENABLED/S11_ENABLED from config.py)
-  // For now save intent locally and show instruction
-  localStorage.setItem(strategy + '_enabled', enabled);
-  toast(`Strategy ${strategy.toUpperCase()} ${enabled ? 'enabled' : 'disabled'} — update config.py to persist`);
-}
-
-// ── Settings ────────────────────────────────────────────────
-function loadSettings() {
-  document.getElementById('supabaseUrl').value = SUPABASE_URL;
-  document.getElementById('supabaseKey').value = SUPABASE_KEY;
-  const s10Qty = localStorage.getItem('s10_qty') || '0.001';
-  const s11Qty = localStorage.getItem('s11_qty') || '0.001';
-  document.getElementById('s10Qty').value = s10Qty;
-  document.getElementById('s11Qty').value = s11Qty;
-  document.getElementById('s10Toggle').checked = localStorage.getItem('s10_enabled') !== 'false';
-  document.getElementById('s11Toggle').checked = localStorage.getItem('s11_enabled') !== 'false';
-}
-
-async function saveConnection() {
-  const url = document.getElementById('supabaseUrl').value.trim().replace(/\/$/, '').replace(/^\s+/, '');
-  const key = document.getElementById('supabaseKey').value.trim();
-  if (!url || !key) { toast('Please enter both URL and key'); return; }
-  SUPABASE_URL = url;
-  SUPABASE_KEY = key;
-  localStorage.setItem('sb_url', url);
-  localStorage.setItem('sb_key', key);
-  const el = document.getElementById('connectionStatus');
-  el.textContent = 'Testing connection...';
-  const data = await sbGet('capital', 'select=strategy&limit=1');
-  if (data !== null) {
-    el.textContent = '✅ Connected successfully';
-    el.style.color = 'var(--green)';
-    toast('Connected! Loading data...');
-    refreshAll();
-    setRefreshInterval();
-  } else {
-    el.textContent = '❌ Connection failed — check URL and key';
-    el.style.color = 'var(--red)';
-  }
-}
-
-function saveQty(strategy) {
-  const val = document.getElementById(strategy + 'Qty').value;
-  if (!val || isNaN(val) || parseFloat(val) <= 0) { toast('Enter a valid quantity'); return; }
-  localStorage.setItem(strategy + '_qty', val);
-  toast(`${strategy.toUpperCase()} quantity saved: ${val} BTC`);
-}
-
-function setRefreshInterval() {
-  if (refreshTimer) clearInterval(refreshTimer);
-  const ms = parseInt(document.getElementById('refreshInterval').value);
-  if (ms > 0) refreshTimer = setInterval(refreshAll, ms);
+// ── Navigation ──────────────────────────────────────────────
+function switchPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav button,.bottom-nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.getElementById('nav-' + page).classList.add('active');
+  const navBtns = document.querySelectorAll('.nav button');
+  const pages = ['dashboard','strategies','positions','trades'];
+  if (navBtns[pages.indexOf(page)]) navBtns[pages.indexOf(page)].classList.add('active');
 }
 
 // ── Refresh all ─────────────────────────────────────────────
 async function refreshAll() {
-  fetchBtcPrice();
-  if (SUPABASE_URL && SUPABASE_KEY) {
-    fetchCapital();
-    fetchPositions();
-    fetchTrades();
+  if (!SB_KEY) {
+    promptForKey(); return;
+  }
+  await Promise.all([
+    fetchStrategies(),
+    fetchCapital(),
+    fetchPositions(),
+    fetchTrades(),
+    fetchSchedulerStatus(),
+  ]);
+}
+
+// ── Scheduler control ────────────────────────────────────────
+async function sendControl(action) {
+  try {
+    await sbPost('scheduler_control', { action, processed: false });
+    toast(`${action === 'restart' ? '🔄 Restart' : '⏹ Stop'} signal sent`);
+    setTimeout(fetchSchedulerStatus, 3000);
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+async function fetchSchedulerStatus() {
+  const data = await sbGet('strategies', 'select=name,enabled&enabled=eq.true');
+  const dot  = document.getElementById('schedDot');
+  const txt  = document.getElementById('schedStatus');
+  const act  = document.getElementById('activeStrategies');
+  if (data && data.length > 0) {
+    dot.className = 'sched-dot running';
+    txt.textContent = 'Running';
+    act.textContent = 'Active: ' + data.map(s => s.name).join(', ');
+  } else {
+    dot.className = 'sched-dot stopped';
+    txt.textContent = 'No strategies enabled';
+    act.textContent = 'Enable a strategy from the Strategies tab';
   }
 }
+
+// ── Strategies ──────────────────────────────────────────────
+async function fetchStrategies() {
+  const data = await sbGet('strategies', 'select=*&order=created_at.asc');
+  if (!data) return;
+  allStrategies = data;
+  renderStrategyList(data);
+
+  // Update trade filter
+  const sel = document.getElementById('tradeFilter');
+  sel.innerHTML = '<option value="all">All</option>';
+  data.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.name; opt.textContent = s.name;
+    sel.appendChild(opt);
+  });
+}
+
+function renderStrategyList(strategies) {
+  const el = document.getElementById('strategyList');
+  if (!strategies.length) {
+    el.innerHTML = '<div class="no-data">No strategies yet. Click + New to create one.</div>';
+    return;
+  }
+  el.innerHTML = strategies.map(s => `
+    <div class="strategy-item ${currentStrategyId===s.id?'selected':''}"
+         onclick="openEditor(${s.id})">
+      <div class="strategy-header">
+        <div>
+          <div class="strategy-name">${s.name}</div>
+          <div class="strategy-desc">${s.description || 'No description'}</div>
+        </div>
+        <label class="toggle" onclick="event.stopPropagation()">
+          <input type="checkbox" ${s.enabled?'checked':''} 
+                 onchange="toggleStrategy(${s.id}, this.checked)"/>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+        <span class="badge ${s.enabled?'badge-green':'badge-muted'}">
+          ${s.enabled?'● Enabled':'○ Disabled'}
+        </span>
+        <span style="font-size:11px;color:var(--muted)">
+          Updated ${new Date(s.updated_at).toLocaleDateString()}
+        </span>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function toggleStrategy(id, enabled) {
+  try {
+    await sbPatch('strategies', `id=eq.${id}`,
+                  { enabled, updated_at: new Date().toISOString() });
+    await fetchStrategies();
+    await fetchSchedulerStatus();
+    toast(enabled ? '✅ Strategy enabled' : '○ Strategy disabled');
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+// ── Editor ──────────────────────────────────────────────────
+const DEFAULT_CODE = `# SCHEDULE
+# entry: mon 12:00
+# monitor: */5
+# exit: daily 12:00
+
+# ─────────────────────────────────────────────
+# IMPORTS — same helpers available as before
+# ─────────────────────────────────────────────
+import numpy as np
+from datetime import datetime, timezone
+from config import IV_FALLBACK, RFR, VIRTUAL_CAPITAL_INR
+from delta_api import get_btc_spot, get_nearest_expiry, get_option_chain
+from db import save_position, load_position, clear_position, log_trade, update_capital, get_capital
+from notifier import alert_entry, alert_cycle_close, alert_error
+
+STRATEGY = "my_strategy"   # must match strategy name
+
+def on_entry():
+    """Called at entry time defined in SCHEDULE above."""
+    try:
+        spot = get_btc_spot()
+        print(f"[{STRATEGY}] Entry: BTC={spot:.0f}")
+        # Your entry logic here
+    except Exception as e:
+        alert_error(STRATEGY, f"Entry error: {e}")
+
+def on_monitor():
+    """Called every N minutes as defined in SCHEDULE above."""
+    state = load_position(STRATEGY)
+    if not state:
+        return
+    try:
+        spot = get_btc_spot()
+        # Your monitoring logic here
+    except Exception as e:
+        alert_error(STRATEGY, f"Monitor error: {e}")
+
+def on_exit():
+    """Called at exit time defined in SCHEDULE above."""
+    state = load_position(STRATEGY)
+    if not state:
+        return
+    try:
+        spot = get_btc_spot()
+        # Your exit logic here
+        clear_position(STRATEGY)
+    except Exception as e:
+        alert_error(STRATEGY, f"Exit error: {e}")
+`;
+
+function openEditor(id) {
+  const s = allStrategies.find(x => x.id === id);
+  if (!s) return;
+  currentStrategyId = id;
+  document.getElementById('editorTitle').textContent = s.name;
+  document.getElementById('stratNameInput').value  = s.name;
+  document.getElementById('stratDescInput').value  = s.description || '';
+  document.getElementById('editorStatus').textContent = 'saved';
+  document.getElementById('editorStatus').className = 'badge badge-green';
+  if (monacoEditor) monacoEditor.setValue(s.code || DEFAULT_CODE);
+  document.getElementById('editorPanel').classList.add('open');
+  renderStrategyList(allStrategies);
+  setTimeout(() => monacoEditor && monacoEditor.layout(), 100);
+}
+
+function createStrategy() {
+  currentStrategyId = null;
+  document.getElementById('editorTitle').textContent = 'New Strategy';
+  document.getElementById('stratNameInput').value  = '';
+  document.getElementById('stratDescInput').value  = '';
+  document.getElementById('editorStatus').textContent = 'new';
+  document.getElementById('editorStatus').className = 'badge badge-muted';
+  if (monacoEditor) monacoEditor.setValue(DEFAULT_CODE);
+  document.getElementById('editorPanel').classList.add('open');
+  setTimeout(() => monacoEditor && monacoEditor.layout(), 100);
+}
+
+function closeEditor() {
+  document.getElementById('editorPanel').classList.remove('open');
+  currentStrategyId = null;
+  fetchStrategies();
+}
+
+async function saveStrategy() {
+  const name = document.getElementById('stratNameInput').value.trim()
+                 .replace(/\s+/g,'_').toLowerCase();
+  const desc = document.getElementById('stratDescInput').value.trim();
+  const code = monacoEditor ? monacoEditor.getValue() : '';
+
+  if (!name) { toast('Enter a strategy name'); return; }
+
+  try {
+    if (currentStrategyId) {
+      await sbPatch('strategies', `id=eq.${currentStrategyId}`,
+                    { name, description:desc, code,
+                      updated_at: new Date().toISOString() });
+      toast('✅ Strategy saved');
+    } else {
+      const res = await sbPost('strategies',
+                               { name, description:desc, code, enabled:false });
+      currentStrategyId = res[0]?.id;
+      toast('✅ Strategy created');
+    }
+    document.getElementById('editorStatus').textContent = 'saved';
+    document.getElementById('editorStatus').className = 'badge badge-green';
+    document.getElementById('editorTitle').textContent = name;
+    await fetchStrategies();
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+async function saveAndRestart() {
+  await saveStrategy();
+  await sendControl('restart');
+}
+
+async function deleteStrategy() {
+  if (!currentStrategyId) return;
+  if (!confirm('Delete this strategy? This cannot be undone.')) return;
+  try {
+    await sbDelete('strategies', `id=eq.${currentStrategyId}`);
+    toast('🗑 Strategy deleted');
+    closeEditor();
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+// ── Capital ──────────────────────────────────────────────────
+async function fetchCapital() {
+  const data = await sbGet('capital', 'select=*');
+  if (!data) return;
+  let total = 0, cap = 20000 * (allStrategies.length || 1);
+  let html = '';
+  data.forEach(r => {
+    const pnl = parseFloat(r.cum_pnl||0);
+    total += pnl;
+    const vc = parseFloat(r.virtual_capital||20000);
+    html += `<div class="kv-row">
+      <span class="kv-key">${r.strategy}</span>
+      <span class="kv-val ${pnl>=0?'green':'red'}">₹${Math.round(vc).toLocaleString()} (${pnl>=0?'+':''}${pnl.toFixed(2)})</span>
+    </div>`;
+  });
+  document.getElementById('stratCapitals').innerHTML = html;
+  const ret = (total / Math.max(cap,1) * 100).toFixed(2);
+  const totalEl = document.getElementById('totalPnl');
+  totalEl.textContent = (total>=0?'+':'') + total.toFixed(2);
+  totalEl.className = 'metric-value ' + (total>=0?'green':'red');
+  const retEl = document.getElementById('totalReturn');
+  retEl.textContent = (total>=0?'+':'') + ret + '%';
+  retEl.className = 'metric-value ' + (total>=0?'green':'red');
+}
+
+// ── Positions ────────────────────────────────────────────────
+async function fetchPositions() {
+  const data = await sbGet('positions', 'select=*');
+  const dashEl = document.getElementById('dashPositions');
+  const listEl = document.getElementById('positionsList');
+  if (!data || !data.length) {
+    dashEl.innerHTML = '<div class="no-data">No open positions</div>';
+    listEl.innerHTML = '<div class="no-data">No open positions</div>';
+    return;
+  }
+  const html = data.map(pos => {
+    const s = pos.state || {};
+    const hedge = s.hedge || s.dyn_hedge;
+    const midPnl = parseFloat(s.mid_hedge_pnl || s.mid_dyn_pnl || 0);
+    return `<div class="card">
+      <div class="card-title">${pos.strategy} — <span class="badge badge-green">● OPEN</span></div>
+      <div class="kv-row"><span class="kv-key">Cycle</span><span class="kv-val">${s.cycle_date||'--'}</span></div>
+      <div class="kv-row"><span class="kv-key">BTC Entry</span><span class="kv-val cyan">$${parseFloat(s.btc_entry||0).toLocaleString()}</span></div>
+      <div class="kv-row"><span class="kv-key">Call K</span><span class="kv-val">${s.call_k||'--'} @ $${parseFloat(s.call_prem||0).toFixed(2)}</span></div>
+      <div class="kv-row"><span class="kv-key">Put K</span><span class="kv-val">${s.put_k||'--'} @ $${parseFloat(s.put_prem||0).toFixed(2)}</span></div>
+      <div class="kv-row"><span class="kv-key">Hedge</span><span class="kv-val ${hedge?'amber':''}">${hedge?hedge.opt_type+' K='+hedge.K+' ('+hedge.breach+')':'None'}</span></div>
+      <div class="kv-row"><span class="kv-key">Mid PnL</span><span class="kv-val ${midPnl>=0?'green':'red'}">${midPnl>=0?'+':''}${midPnl.toFixed(2)}</span></div>
+    </div>`;
+  }).join('');
+  dashEl.innerHTML = html;
+  listEl.innerHTML = html;
+}
+
+// ── Trades ───────────────────────────────────────────────────
+async function fetchTrades() {
+  const data = await sbGet('trades', 'select=*&order=id.desc&limit=200');
+  if (!data) return;
+  allTrades = data;
+  filterAndRenderTrades();
+}
+
+function filterAndRenderTrades() {
+  const f = document.getElementById('tradeFilter').value;
+  const filtered = f === 'all' ? allTrades : allTrades.filter(t => t.strategy === f);
+  const tbody = document.getElementById('tradeBody');
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="no-data">No trades yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtered.map(t => {
+    const pnl = parseFloat(t.day_pnl||0);
+    const cum = parseFloat(t.cum_pnl||0);
+    return `<tr>
+      <td>${t.cycle_date||'--'}</td>
+      <td style="font-size:11px;color:var(--cyan)">${t.strategy}</td>
+      <td>${t.call_k||'--'}</td>
+      <td>${t.put_k||'--'}</td>
+      <td class="${pnl>=0?'win':'loss'}">${pnl>=0?'+':''}${pnl.toFixed(2)}</td>
+      <td class="${cum>=0?'win':'loss'}">${cum>=0?'+':''}${cum.toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+
+  // KPIs
+  const wins = filtered.filter(t => parseFloat(t.day_pnl)>0);
+  const loss = filtered.filter(t => parseFloat(t.day_pnl)<0);
+  const cums = filtered.map(t=>parseFloat(t.cum_pnl||0));
+  document.getElementById('kpiWR').textContent   = filtered.length ? (wins.length/filtered.length*100).toFixed(1)+'%' : '--';
+  document.getElementById('kpiAvgW').textContent = wins.length ? '+$'+(wins.reduce((a,t)=>a+parseFloat(t.day_pnl),0)/wins.length).toFixed(2) : '--';
+  document.getElementById('kpiAvgL').textContent = loss.length ? '-$'+Math.abs(loss.reduce((a,t)=>a+parseFloat(t.day_pnl),0)/loss.length).toFixed(2) : '--';
+  const dd = cums.length ? Math.min(...cums.map((_,i)=>cums[i]-Math.max(...cums.slice(0,i+1)))) : 0;
+  document.getElementById('kpiDD').textContent   = '$' + dd.toFixed(2);
+}
+
+// ── Settings prompt ──────────────────────────────────────────
+function promptForKey() {
+  const key = prompt('Enter your Supabase anon key:');
+  if (key) {
+    SB_KEY = key.trim();
+    localStorage.setItem('sb_key', SB_KEY);
+    refreshAll();
+  }
+}
+
+
+// ── Broker management ────────────────────────────────────────
+let allBrokers = [];
+let currentMode = 'paper';
+let currentBrokerId = null;
+
+function showAddBroker() {
+  document.getElementById('addBrokerForm').style.display = 'block';
+}
+function hideAddBroker() {
+  document.getElementById('addBrokerForm').style.display = 'none';
+  document.getElementById('brokerApiKey').value = '';
+  document.getElementById('brokerApiSecret').value = '';
+}
+
+async function fetchBrokers() {
+  const data = await sbGet('broker_connections', 'select=id,broker,label,enabled,created_at');
+  if (!data) return;
+  allBrokers = data;
+  renderBrokers(data);
+  // Populate broker select in editor
+  const sel = document.getElementById('brokerSelect');
+  sel.innerHTML = '<option value="">Select broker...</option>';
+  data.filter(b => b.enabled).forEach(b => {
+    const opt = document.createElement('option');
+    opt.value = b.id;
+    opt.textContent = b.label || b.broker;
+    sel.appendChild(opt);
+  });
+}
+
+function renderBrokers(brokers) {
+  const el = document.getElementById('brokerList');
+  if (!brokers.length) {
+    el.innerHTML = '<div class="no-data">No brokers connected yet.</div>';
+    return;
+  }
+  el.innerHTML = brokers.map(b => `
+    <div class="card" style="margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-weight:700;font-size:14px">${b.label || b.broker}</div>
+          <div style="font-size:12px;color:var(--muted)">${b.broker}</div>
+        </div>
+        <span class="badge ${b.enabled?'badge-green':'badge-muted'}">
+          ${b.enabled?'● Active':'○ Disabled'}
+        </span>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn btn-success btn-sm" onclick="testBroker(${b.id})">🔌 Test</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteBroker(${b.id})">🗑 Clear Keys</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function saveBroker() {
+  const broker    = document.getElementById('brokerType').value;
+  const label     = document.getElementById('brokerLabel').value.trim();
+  const api_key   = document.getElementById('brokerApiKey').value.trim();
+  const api_secret= document.getElementById('brokerApiSecret').value.trim();
+  if (!api_key || !api_secret) { toast('Enter API key and secret'); return; }
+  try {
+    await sbPost('broker_connections', { broker, label, api_key, api_secret, enabled: true });
+    toast('✅ Broker saved — testing connection...');
+    hideAddBroker();
+    await fetchBrokers();
+    // Auto-test the newest broker
+    if (allBrokers.length) testBroker(allBrokers[allBrokers.length-1].id);
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+async function testBroker(id) {
+  toast('🔌 Testing connection...');
+  // We test via a simple ticker fetch (no auth needed) as a proxy
+  // Real auth test happens when strategy runs
+  try {
+    const r = await fetch(`${DELTA_BASE}/v2/tickers/BTCUSD`);
+    if (r.ok) {
+      toast('✅ Delta Exchange reachable — auth tested on first trade');
+    } else {
+      toast('❌ Could not reach Delta Exchange');
+    }
+  } catch(e) { toast('❌ Network error: ' + e.message); }
+}
+
+async function deleteBroker(id) {
+  if (!confirm('Delete broker credentials? This cannot be undone.')) return;
+  try {
+    await sbDelete('broker_connections', `id=eq.${id}`);
+    toast('🗑 Broker removed');
+    await fetchBrokers();
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+// ── Paper / Live mode toggle ──────────────────────────────────
+function setMode(mode) {
+  currentMode = mode;
+  const paperBtn = document.getElementById('modePaper');
+  const liveBtn  = document.getElementById('modeLive');
+  const brokerSel= document.getElementById('brokerSelect');
+
+  if (mode === 'paper') {
+    paperBtn.style.background = 'var(--cyan)';
+    paperBtn.style.color      = '#0d0f14';
+    liveBtn.style.background  = 'transparent';
+    liveBtn.style.color       = 'var(--muted)';
+    brokerSel.style.display   = 'none';
+  } else {
+    liveBtn.style.background  = 'var(--red)';
+    liveBtn.style.color       = 'white';
+    paperBtn.style.background = 'transparent';
+    paperBtn.style.color      = 'var(--muted)';
+    brokerSel.style.display   = 'block';
+    if (!allBrokers.length) {
+      toast('⚠️ Connect a broker first in the Brokers tab');
+      setMode('paper'); return;
+    }
+    toast('⚠️ LIVE mode — real orders will be placed!');
+  }
+}
+
+// Update saveStrategy to include mode and broker_id
+const _origSaveStrategy = saveStrategy;
+saveStrategy = async function() {
+  const name      = document.getElementById('stratNameInput').value.trim().replace(/\s+/g,'_').toLowerCase();
+  const desc      = document.getElementById('stratDescInput').value.trim();
+  const code      = monacoEditor ? monacoEditor.getValue() : '';
+  const broker_id = currentMode === 'live'
+                    ? (document.getElementById('brokerSelect').value || null)
+                    : null;
+  if (!name) { toast('Enter a strategy name'); return; }
+  try {
+    const payload = { name, description:desc, code, mode:currentMode,
+                      broker_id: broker_id ? parseInt(broker_id) : null,
+                      updated_at: new Date().toISOString() };
+    if (currentStrategyId) {
+      await sbPatch('strategies', `id=eq.${currentStrategyId}`, payload);
+      toast('✅ Strategy saved');
+    } else {
+      const res = await sbPost('strategies', { ...payload, enabled:false });
+      currentStrategyId = res[0]?.id;
+      toast('✅ Strategy created');
+    }
+    document.getElementById('editorStatus').textContent = 'saved';
+    document.getElementById('editorStatus').className   = 'badge badge-green';
+    document.getElementById('editorTitle').textContent  = name;
+    await fetchStrategies();
+  } catch(e) { toast('Error: ' + e.message); }
+};
+
+// Update openEditor to load mode
+const _origOpenEditor = openEditor;
+openEditor = function(id) {
+  _origOpenEditor(id);
+  const s = allStrategies.find(x => x.id === id);
+  if (s) {
+    setMode(s.mode || 'paper');
+    const sel = document.getElementById('brokerSelect');
+    if (s.broker_id) sel.value = s.broker_id;
+    currentBrokerId = s.broker_id;
+  }
+};
+
+// ── Orders log ────────────────────────────────────────────────
+async function fetchOrders() {
+  const data = await sbGet('orders', 'select=*&order=id.desc&limit=50');
+  if (!data) return;
+  const tbody = document.getElementById('orderBody');
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="no-data">No orders yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(o => `<tr>
+    <td style="font-size:11px">${new Date(o.created_at).toLocaleString()}</td>
+    <td style="color:var(--cyan);font-size:11px">${o.strategy}</td>
+    <td><span class="badge ${o.mode==='live'?'badge-red':'badge-muted'}">${o.mode.toUpperCase()}</span></td>
+    <td style="font-size:11px;font-family:monospace">${o.symbol}</td>
+    <td style="${o.side==='buy'?'color:var(--green)':'color:var(--red)'};font-weight:700">${o.side.toUpperCase()}</td>
+    <td>${o.qty}</td>
+    <td><span class="badge ${o.status==='filled'?'badge-green':o.status==='rejected'?'badge-red':'badge-muted'}">${o.status||'--'}</span></td>
+  </tr>`).join('');
+}
+
+// Hook into refreshAll
+const _origRefreshAll = refreshAll;
+refreshAll = async function() {
+  await _origRefreshAll();
+  await fetchBrokers();
+  await fetchOrders();
+};
 
 // ── Toast ────────────────────────────────────────────────────
 function toast(msg) {
@@ -879,23 +1043,6 @@ function toast(msg) {
   el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), 3000);
 }
-
-// ── PWA Install ──────────────────────────────────────────────
-async function installPWA() {
-  if (!deferredPrompt) return;
-  deferredPrompt.prompt();
-  const result = await deferredPrompt.userChoice;
-  if (result.outcome === 'accepted') toast('App installed! 🎉');
-  deferredPrompt = null;
-}
-</script>
-
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js');
-    });
-  }
 </script>
 </body>
 </html>
