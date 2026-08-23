@@ -244,6 +244,26 @@
   </div>
 </div>
 
+<!-- Key Setup Banner -->
+<div id="keySetupBanner" style="display:none;margin:12px;background:var(--card);
+     border:1px solid var(--cyan);border-radius:12px;padding:16px">
+  <div style="font-size:14px;font-weight:700;color:var(--cyan);margin-bottom:12px">
+    🔑 Connect to Supabase
+  </div>
+  <div style="display:flex;flex-direction:column;gap:10px">
+    <input id="setupSbUrl" placeholder="Supabase URL (https://xxx.supabase.co)"
+           value="https://uatylemdqlhcsbtifgau.supabase.co"
+           style="background:var(--bg);border:1px solid var(--border);border-radius:8px;
+                  padding:10px;color:var(--text);font-size:13px"/>
+    <input id="setupSbKey" placeholder="Supabase anon key (eyJ...)" type="password"
+           style="background:var(--bg);border:1px solid var(--border);border-radius:8px;
+                  padding:10px;color:var(--text);font-size:13px;font-family:monospace"/>
+    <button class="btn btn-primary" onclick="saveSupabaseKey()" style="width:100%">
+      Connect
+    </button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <!-- ── DASHBOARD ── -->
@@ -272,6 +292,18 @@
         <div class="metric-value" id="totalReturn">--</div></div>
     </div>
     <div id="stratCapitals" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card" style="padding:12px 16px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:12px;color:var(--muted)">
+        Supabase: <span style="color:var(--cyan);font-family:monospace" id="sbUrlDisplay">--</span>
+      </span>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="showKeySetup()">🔑 Reconnect</button>
+        <button class="btn btn-danger btn-sm" onclick="clearSupabaseKey()">Clear</button>
+      </div>
+    </div>
   </div>
 
   <div class="card">
@@ -448,13 +480,42 @@ require(['vs/editor/editor.main'], () => {
 
 // ── Init ────────────────────────────────────────────────────
 window.addEventListener('load', () => {
-  if (SB_KEY) {
+  // Always prompt for Supabase key if not set
+  if (!SB_KEY) {
+    showKeySetup();
+  } else {
     refreshAll();
     refreshTimer = setInterval(refreshAll, 60000);
   }
   fetchBtcPrice();
   setInterval(fetchBtcPrice, 30000);
 });
+
+function showKeySetup() {
+  document.getElementById('keySetupBanner').style.display = 'block';
+}
+
+function saveSupabaseKey() {
+  const url = document.getElementById('setupSbUrl').value.trim().replace(/\/+$/, '');
+  const key = document.getElementById('setupSbKey').value.trim();
+  if (!url || !key) { alert('Enter both URL and key'); return; }
+  SB_URL = url;
+  SB_KEY = key;
+  localStorage.setItem('sb_url', url);
+  localStorage.setItem('sb_key', key);
+  document.getElementById('keySetupBanner').style.display = 'none';
+  refreshAll();
+  refreshTimer = setInterval(refreshAll, 60000);
+  toast('✅ Connected to Supabase');
+}
+
+function clearSupabaseKey() {
+  if (!confirm('Clear Supabase credentials?')) return;
+  SB_KEY = ''; SB_URL = '';
+  localStorage.removeItem('sb_key');
+  localStorage.removeItem('sb_url');
+  toast('Keys cleared — refresh to reconnect');
+}
 
 // ── Supabase ────────────────────────────────────────────────
 async function sbGet(table, params='') {
@@ -496,6 +557,11 @@ async function sbDelete(table, filter) {
 }
 
 // ── BTC Price ───────────────────────────────────────────────
+function updateUrlDisplay() {
+  const el = document.getElementById('sbUrlDisplay');
+  if (el) el.textContent = SB_URL ? SB_URL.replace('https://','').split('.')[0] + '.supabase.co' : 'not connected';
+}
+
 async function fetchBtcPrice() {
   try {
     const r = await fetch(`${DELTA_BASE}/v2/tickers/BTCUSD`);
@@ -519,8 +585,9 @@ function switchPage(page) {
 
 // ── Refresh all ─────────────────────────────────────────────
 async function refreshAll() {
+  updateUrlDisplay();
   if (!SB_KEY) {
-    promptForKey(); return;
+    showKeySetup(); return;
   }
   await Promise.all([
     fetchStrategies(),
